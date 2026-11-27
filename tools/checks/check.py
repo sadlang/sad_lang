@@ -190,7 +190,7 @@ def declared_internal_deps(manifest: dict) -> set[str]:
 
 
 def external_deps(name: str, manifest: dict) -> list[str]:
-    # التبعيّةُ الداخليّة مسارٌ يقع تحت crates/ نفسِه، لا أيُّ مسار (مراجعةُ أميليا الثانية، ث‑٦).
+    # التبعيّةُ الداخليّة مسارٌ يقع تحت crates/ نفسِه، لا أيُّ مسار.
     tables = [manifest]
     tables.extend(manifest.get("target", {}).values())
     found = []

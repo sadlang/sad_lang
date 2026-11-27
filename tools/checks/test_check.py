@@ -73,12 +73,12 @@ class CrateDeps(Tree):
         self.rejects("rule 25", "crate-deps", "--check")
 
     def test_path_dependency_under_another_name(self) -> None:
-        # مراد الثالث، M14: تبعيّةُ مسارٍ باسمٍ لا يبدأ بـsad_ تبقى تبعيّةً داخليّة تحكمها القاعدة ٢٥.
+        # تبعيّةُ مسارٍ باسمٍ لا يبدأ بـsad_ تبقى تبعيّةً داخليّة تحكمها القاعدة ٢٥.
         self.append("crates/sad_toml/Cargo.toml", '\n[dependencies]\nfoo = { path = "../sad_check" }\n')
         self.rejects("rule 25", "crate-deps", "--check")
 
     def test_workspace_dependencies_table(self) -> None:
-        # مراد الثالث، M16: جدولُ [workspace.dependencies] بابٌ للصناديق الخارجيّة.
+        # جدولُ [workspace.dependencies] بابٌ للصناديق الخارجيّة.
         self.append("Cargo.toml", '\n[workspace.dependencies]\nserde = "1"\n')
         self.rejects("workspace.dependencies has 'serde'", "crate-deps", "--check")
 
@@ -161,7 +161,7 @@ class ErrorPages(Tree):
         self.rejects("799999.mdx: page has no error", "error-pages", "--site", str(self.site))
 
     def test_orphan_page_deeper_or_md(self) -> None:
-        # أميليا الثالثة، ث‑٦: صفحةٌ أعمق بمستوى أو بامتداد .md لا تختبئ.
+        # صفحةٌ أعمق بمستوى أو بامتداد .md لا تختبئ.
         errors_dir = self.site / "src" / "content" / "docs" / "reference" / "errors"
         (errors_dir / "files" / "old").mkdir()
         (errors_dir / "files" / "old" / "799998.mdx").write_text("---\ntitle: x\n---\n", encoding="utf-8")
