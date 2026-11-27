@@ -42,15 +42,15 @@ jobs:
           path: _base
           sparse-checkout: tools/checks
 
-      # إيداعُ مستودع القواعد المثبَّت في tools/checks/rules_ref.
+      # إيداعُ مستودع التصميم المثبَّت في tools/checks/rules_ref.
       - name: rules ref
         id: rules
         run: echo "ref=$(grep -v '^#' tools/checks/rules_ref | head -n 1)" >> "$GITHUB_OUTPUT"
 
-      # الموقعُ في مستودع القواعد العامّ، لفحص صفحات الأخطاء (ق‑٦ ب٣).
+      # الموقعُ في مستودع التصميم العامّ sadlang/sad_lang_design، لفحص صفحات الأخطاء (ق‑٦ ب٣).
       - uses: actions/checkout@v7
         with:
-          repository: SalehKadah/sad-lang-rules
+          repository: sadlang/sad_lang_design
           ref: ${{ steps.rules.outputs.ref }}
           path: _rules
           sparse-checkout: موقع_اللغة/src
