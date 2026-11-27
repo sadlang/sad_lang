@@ -261,7 +261,9 @@ mod tests {
         sad_check!(ids(&session) == [ErrorId::FileInUse], "{:?}", ids(&session));
     }
 
-    /// ملفٌّ بلا أذون. ومديرُ النظام يقرؤه رغمها، فيُتخطّى الاختبارُ حينئذٍ.
+    /// ملفٌّ بلا أذون. ومديرُ النظام يقرؤه رغمها، فيُتخطّى الاختبارُ حينئذٍ على جهاز المطوّر.
+    /// أمّا في التكامل المستمرّ (متغيّرُ CI) فالتخطّي فشل: فهذا الاختبارُ وحده يغطّي 700006 على يونكس،
+    /// فلا يضيع بصمتٍ على مشغّلٍ بصلاحيّة المدير (مراجعتا أميليا ومراد).
     #[cfg(unix)]
     #[test]
     fn unreadable_file_is_permission_denied() {
@@ -271,6 +273,10 @@ mod tests {
         let path = dir.source("a", b"1");
         fs::set_permissions(&path, fs::Permissions::from_mode(0o000)).expect("chmod works");
         if fs::read(&path).is_ok() {
+            sad_check!(
+                std::env::var_os("CI").is_none(),
+                "the file is readable despite mode 000: CI runs as root, so 700006 is untested"
+            );
             return;
         }
         let mut session = Session::new();
