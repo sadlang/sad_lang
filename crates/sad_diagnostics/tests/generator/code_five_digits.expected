@@ -1,0 +1,1 @@
+rule 51: syntax.toml: [[error]] #1: code 10001 must have six digits

@@ -1,0 +1,1 @@
+rule 51: catalog.toml: 'removed' must be an array

@@ -1,0 +1,120 @@
+# مصدرُ الحقيقة لاتّجاه التبعيّة بين الحزم (القاعدة ٢٥).
+# الشرحُ في crates/dependencies.md، وجدولُه مولَّدٌ من هذا الملفّ:
+#   python tools/checks/check.py crate-deps
+# وملفّاتُ الفحص لا يغيّرها إلّا المالك، في طلب دمجٍ منفصل (القاعدة ٢٠).
+#
+# القواعدُ التي يفرضها السكربت:
+#   ١. كلُّ حزمةٍ في crates/ مذكورةٌ هنا، ولا يُذكر هنا ما ليس فيها.
+#   ٢. لا تعتمد حزمةٌ إلّا على ما في قائمتها، في dependencies وdev-dependencies وbuild-dependencies.
+#   ٣. التبعيّةُ إلى طبقةٍ أدنى وحدها، فلا دورانَ ولا تبعيّةَ داخل الطبقة.
+#   ٤. لا يبلغ الحزمةَ llvm-crate، مباشرةً أو بواسطة، إلّا ما في llvm-users.
+
+llvm-crate = "sad_llvm"
+llvm-users = ["sad_codegen_llvm", "sad_link", "sad_driver", "sad_worker"]
+
+[doc]
+table-header = "| الطبقة | الحزمة | تعتمد على |\n|---|---|---|"
+none = "—"
+
+[layers]
+0 = "الأساس"
+1 = "البنية التحتيّة"
+2 = "الاتّجاه"
+3 = "التشخيص"
+4 = "اللفظ والشجرة والربط والبروتوكول"
+5 = "النحو"
+6 = "الأسماء"
+7 = "الأنواع"
+8 = "الملكيّة"
+9 = "التمثيل الوسيط"
+10 = "الخلفيّة والتنسيق"
+11 = "البرامج"
+
+[crates.sad_check]
+layer = 0
+deps = []
+
+# قارئُ TOML لملفّات data/ في build.rs، بدل الصناديق الخارجيّة (قرارُ المالك ٢٠٢٦-١١-٢٧).
+[crates.sad_toml]
+layer = 0
+deps = []
+
+[crates.sad_arena]
+layer = 1
+deps = ["sad_check"]
+
+[crates.sad_span]
+layer = 1
+deps = ["sad_check", "sad_toml", "sad_unicode"]
+
+[crates.sad_unicode]
+layer = 0
+deps = []
+
+[crates.sad_llvm]
+layer = 1
+deps = ["sad_check"]
+
+[crates.sad_bidi]
+layer = 2
+deps = ["sad_check", "sad_unicode"]
+
+[crates.sad_diagnostics]
+layer = 3
+deps = ["sad_check", "sad_toml", "sad_span", "sad_unicode", "sad_bidi"]
+
+[crates.sad_lexer]
+layer = 4
+deps = ["sad_check", "sad_span", "sad_unicode", "sad_diagnostics"]
+
+[crates.sad_ast]
+layer = 4
+deps = ["sad_check", "sad_arena", "sad_span"]
+
+[crates.sad_link]
+layer = 4
+deps = ["sad_check", "sad_unicode", "sad_diagnostics", "sad_llvm"]
+
+[crates.sad_worker_protocol]
+layer = 4
+deps = ["sad_check", "sad_span", "sad_diagnostics"]
+
+[crates.sad_parser]
+layer = 5
+deps = ["sad_check", "sad_arena", "sad_span", "sad_unicode", "sad_diagnostics", "sad_lexer", "sad_ast"]
+
+[crates.sad_resolve]
+layer = 6
+deps = ["sad_check", "sad_arena", "sad_span", "sad_unicode", "sad_diagnostics", "sad_ast"]
+
+[crates.sad_types]
+layer = 7
+deps = ["sad_check", "sad_arena", "sad_span", "sad_diagnostics", "sad_ast", "sad_resolve"]
+
+[crates.sad_ownership]
+layer = 8
+deps = ["sad_check", "sad_arena", "sad_span", "sad_diagnostics", "sad_ast", "sad_resolve", "sad_types"]
+
+[crates.sad_ir]
+layer = 9
+deps = ["sad_check", "sad_arena", "sad_span", "sad_diagnostics", "sad_ast", "sad_resolve", "sad_types", "sad_ownership"]
+
+[crates.sad_codegen_llvm]
+layer = 10
+deps = ["sad_check", "sad_arena", "sad_span", "sad_diagnostics", "sad_ir", "sad_link", "sad_llvm"]
+
+[crates.sad_session]
+layer = 10
+deps = ["sad_check", "sad_arena", "sad_span", "sad_unicode", "sad_diagnostics", "sad_lexer", "sad_ast", "sad_parser", "sad_resolve", "sad_types", "sad_ownership", "sad_ir"]
+
+[crates.sad_driver]
+layer = 11
+deps = ["sad_check", "sad_unicode", "sad_span", "sad_diagnostics", "sad_session", "sad_codegen_llvm", "sad_link", "sad_llvm"]
+
+[crates.sad_worker]
+layer = 11
+deps = ["sad_check", "sad_span", "sad_diagnostics", "sad_session", "sad_codegen_llvm", "sad_link", "sad_llvm", "sad_worker_protocol"]
+
+[crates.sad_lsp]
+layer = 11
+deps = ["sad_check", "sad_span", "sad_diagnostics", "sad_worker_protocol"]

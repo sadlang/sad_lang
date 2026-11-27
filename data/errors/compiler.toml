@@ -1,0 +1,36 @@
+# عائلةُ مترجم 800: أخطاءُ المترجم نفسِه لا شفرةِ المطوّر (ق‑٦ هـ، قرارُ المالك ٢٠٢٦-١١-٢٧). والصيغةُ في catalog.toml.
+schema = 1
+
+[family]
+number = 800
+name = "مترجم"
+
+[[error]]
+code = 800001
+id = "CompilerCrash"
+name = "مترجم.انهيار"
+page = "reference/errors/compiler/800001"
+severity = "error"
+message = "هذا خطأٌ في المترجم لا في شفرتك"
+params = []
+
+[[error]]
+code = 800002
+id = "CrashReport"
+name = "مترجم.تقرير_الانهيار"
+page = "reference/errors/compiler/800002"
+severity = "note"
+message = "إصدارُ المترجم {version}، وتقريرُ الانهيار في «{report}». أبلِغ عنه وأرفِق التقرير"
+params = [
+    { name = "version", kind = "text" },
+    { name = "report", kind = "path" },
+]
+
+[[error]]
+code = 800003
+id = "CrashReportUnwritten"
+name = "مترجم.تقرير_لم_يكتب"
+page = "reference/errors/compiler/800003"
+severity = "note"
+message = "إصدارُ المترجم {version}، ولم يُكتب تقريرُ الانهيار. أبلِغ عنه"
+params = [{ name = "version", kind = "text" }]

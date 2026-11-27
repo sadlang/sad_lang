@@ -1,0 +1,1 @@
+rule 48: syntax.toml: error 100001: old name has hidden character U+200F

@@ -1,0 +1,28 @@
+[package]
+name = "sad_llvm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+# القاعدة ٣: الصندوقُ الوحيد الذي يُسمح فيه بـunsafe، فلا يرث unsafe_code = "forbid".
+# وبقيّةُ الجدول نسخةٌ من [workspace.lints] في الجذر، يفحص check.py تطابقَهما.
+[lints.rust]
+non_ascii_idents = "forbid"
+text_direction_codepoint_in_comment = "forbid"
+unreachable_pub = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+unwrap_used = "deny"
+undocumented_unsafe_blocks = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+wildcard_enum_match_arm = "deny"
+as_conversions = "deny"
+disallowed_methods = "deny"
+disallowed_types = "deny"
+disallowed_macros = "deny"
+allow_attributes = "deny"
+allow_attributes_without_reason = "deny"

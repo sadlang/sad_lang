@@ -1,0 +1,5 @@
+# رموزٌ لا حالةَ ذهبيّةً لها، وأين تُختبر ولماذا (ق‑٦ و). يقرؤه crates/sad_driver/tests/golden.rs، ولكلّ عائلةٍ ملفُّها.
+# الصيغة: الرمزُ ثمّ مسافةٌ ثمّ العلّة.
+800001 انهيارٌ متعمَّدٌ بمتغيّر البيئة SAD_CRASH_TEST، ولا يضبط حاملُ الحالات الذهبيّة البيئة: sad_driver، tests/crash.rs
+800002 الملاحظةُ فيها مسارُ التقرير ورقمُ العمليّة، فلا خرجَ ثابت: sad_driver، crash_says_it_is_the_compiler_and_writes_a_report
+800003 مجلّدٌ مؤقّتٌ لا يُكتب فيه: sad_driver، crash_without_a_writable_temp_dir_says_so

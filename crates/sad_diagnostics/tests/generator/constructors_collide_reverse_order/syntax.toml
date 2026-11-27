@@ -1,0 +1,14 @@
+schema = 1
+
+[family]
+number = 100
+name = "نحو"
+
+[[error]]
+code = 100001
+id = "FirstArgs"
+name = "نحو.اول"
+page = "reference/errors/syntax/100001"
+severity = "error"
+message = "في «{path}» عند {offset}"
+params = [{ name = "path", kind = "text" }, { name = "offset", kind = "count" }]

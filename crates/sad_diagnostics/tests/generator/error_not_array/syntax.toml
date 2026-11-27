@@ -1,0 +1,6 @@
+schema = 1
+error = 1
+
+[family]
+number = 100
+name = "نحو"

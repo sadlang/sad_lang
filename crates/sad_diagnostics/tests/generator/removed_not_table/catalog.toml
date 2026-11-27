@@ -1,0 +1,10 @@
+schema = 1
+removed = [1]
+
+[format]
+digits = "٠١٢٣٤٥٦٧٨٩"
+
+[severity]
+error = "خطأ"
+warning = "تحذير"
+note = "ملاحظة"

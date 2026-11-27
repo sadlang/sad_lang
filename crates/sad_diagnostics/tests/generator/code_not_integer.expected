@@ -1,0 +1,1 @@
+rule 51: syntax.toml: [[error]] #1: 'code' must be an integer

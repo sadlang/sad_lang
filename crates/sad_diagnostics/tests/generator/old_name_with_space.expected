@@ -1,0 +1,1 @@
+rule 51: syntax.toml: error 100001: old name 'ا ب' has U+0020

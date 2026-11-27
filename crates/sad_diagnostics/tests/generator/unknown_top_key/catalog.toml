@@ -1,0 +1,11 @@
+colour = 1
+schema = 1
+removed = []
+
+[format]
+digits = "٠١٢٣٤٥٦٧٨٩"
+
+[severity]
+error = "خطأ"
+warning = "تحذير"
+note = "ملاحظة"

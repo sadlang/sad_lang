@@ -1,0 +1,6 @@
+# عائلةُ انواع 200: الأنواع (ق‑٤). والصيغةُ في catalog.toml.
+schema = 1
+
+[family]
+number = 200
+name = "انواع"

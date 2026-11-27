@@ -1,0 +1,17 @@
+# ملفّاتُ الفحص والاختباراتُ المرجعيّة لا يغيّرها إلّا المالك (دليلُ الأسلوب، القاعدة ٢٠).
+/tools/checks/            @SalehKadah
+/clippy.toml              @SalehKadah
+/crates/*/clippy.toml     @SalehKadah
+/tests/diagnostics/       @SalehKadah
+/tests/conformance/       @SalehKadah
+/crates/*/tests/          @SalehKadah
+/.github/                 @SalehKadah
+# وما يحكم الفحوصَ نفسَها: إعداداتُ clippy والتنسيق وسلسلةُ الأدوات والمقارنةُ بالبايتات.
+/Cargo.toml               @SalehKadah
+/rustfmt.toml             @SalehKadah
+/rust-toolchain.toml      @SalehKadah
+/.gitattributes           @SalehKadah
+# والمولّدان وبياناتُهما: ما يقرّر نصَّ الرسائل وما يرفضه المولّد (مراجعةُ مراد الثالثة).
+/data/                                @SalehKadah
+/crates/sad_diagnostics/catalog_gen.rs @SalehKadah
+/crates/sad_span/source_gen.rs        @SalehKadah

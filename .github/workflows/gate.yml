@@ -1,0 +1,112 @@
+# بوّابةُ الدمج: كلُّ خطوةٍ تمنع الدمجَ إن فشلت (دليلُ الأسلوب، القواعد ١٦ و١٧ و٢٠ و٧١ و٨١).
+# لينكس وWindows معًا، ولا يُخفي فشلُ منصّةٍ فشلَ الأخرى.
+#
+# أدواتُ الفرض من الفرع الأساسيّ (القاعدة ٨١): شفرةُ سكربت الفحص تُؤخذ من الفرع الأساسيّ وتُشغَّل على شجرة الطلب،
+# فلا يُضعف طلبٌ الفحصَ ثمّ يمرّ به. أمّا السياساتُ (clippy_policy.toml وcrate_deps.toml) فمن الطلب نفسِه،
+# فالصندوقُ الجديد وسياستُه في طلبٍ واحد، وتغييرُها لا يمرّ إلّا بموافقة المالك (CODEOWNERS، القاعدة ٢٠).
+# وهذا الملفُّ نفسُه يأخذه GitHub من الطلب في pull_request، فيحرسه CODEOWNERS ومراجعةُ المالك في حماية الفرع.
+#
+# الإقلاع: البوّابةُ تحتاج فرعًا أساسيًّا فيه tools/checks. فأوّلُ إيداعٍ يُدفع إلى main مباشرةً.
+name: gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    env:
+      # لا __pycache__ في الشجرة، فلا يظهر ملفٌّ جديدٌ بعد الاختبار.
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v7
+
+      # شفرةُ الفحص من الفرع الأساسيّ في الطلب، ومن الإيداع المدفوع نفسِه في الدفع إلى main.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.base_ref || github.sha }}
+          path: _base
+          sparse-checkout: tools/checks
+
+      # إيداعُ مستودع القواعد المثبَّت في tools/checks/rules_ref.
+      - name: rules ref
+        id: rules
+        run: echo "ref=$(grep -v '^#' tools/checks/rules_ref | head -n 1)" >> "$GITHUB_OUTPUT"
+
+      # الموقعُ في مستودع القواعد العامّ، لفحص صفحات الأخطاء (ق‑٦ ب٣).
+      - uses: actions/checkout@v7
+        with:
+          repository: SalehKadah/sad-lang-rules
+          ref: ${{ steps.rules.outputs.ref }}
+          path: _rules
+          sparse-checkout: موقع_اللغة/src
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      # إصدارُ Rust ومكوّناتُه من rust-toolchain.toml.
+      - name: toolchain
+        run: rustup toolchain install
+
+      - name: format
+        run: cargo fmt --all --check
+
+      - name: clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      # فيها اختباراتُ الوحدة، والملفّاتُ المخالِفة للمولّدين، والاختباراتُ الذهبيّة لبرنامج sad.
+      # ولا يوقف فشلُ صندوقٍ اختباراتِ ما بعده.
+      - name: test
+        run: cargo test --workspace --locked --no-fail-fast
+
+      - name: clippy-config
+        run: python _base/tools/checks/check.py --root . --policies tools/checks clippy-config --check
+
+      - name: crate-deps
+        run: python _base/tools/checks/check.py --root . --policies tools/checks crate-deps --check
+
+      - name: error pages
+        run: python _base/tools/checks/check.py --root . error-pages --site "_rules/موقع_اللغة"
+
+      # اختباراتُ الفاحص نفسِه (القواعد ٣٨–٤١): كلُّ فحصٍ يرفض شجرةً تخالفه.
+      - name: checker tests
+        run: python -m unittest tools/checks/test_check.py
+
+      # القاعدة ١٤: بناءان في مجلّدين جديدين يعطيان الشفرةَ المولَّدةَ نفسَها.
+      - name: deterministic generated code
+        run: |
+          CARGO_TARGET_DIR=target/det_a cargo build --locked -p sad_diagnostics -p sad_span
+          CARGO_TARGET_DIR=target/det_b cargo build --locked -p sad_diagnostics -p sad_span
+          for f in catalog.rs source_file.rs; do
+            a=$(find target/det_a -path "*/out/$f")
+            b=$(find target/det_b -path "*/out/$f")
+            [ "$(echo "$a" | wc -l)" -eq 1 ] && [ "$(echo "$b" | wc -l)" -eq 1 ] || { echo "ambiguous $f"; exit 1; }
+            cmp "$a" "$b"
+          done
+
+      # لا CRLF ولا نهاياتٍ مختلطة في الشفرة والبيانات، إلّا الاختباراتِ الذهبيّة التي تحملها عمدًا.
+      - name: line endings
+        run: |
+          bad=$(git ls-files --eol | grep -E 'i/(crlf|mixed)' | grep -v 'tests/diagnostics/' || true)
+          if [ -n "$bad" ]; then echo "$bad"; exit 1; fi
+
+      # لا ملفَّ تغيّر ولا ملفَّ جديدًا بعد البناء والاختبار، ومنها غيرُ المتتبَّع.
+      - name: no generated drift
+        run: |
+          changes=$(git status --porcelain -- . ':(exclude)_base' ':(exclude)_rules')
+          if [ -n "$changes" ]; then echo "$changes"; exit 1; fi

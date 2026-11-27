@@ -1,0 +1,63 @@
+# مصدرٌ واحدٌ لملفّات clippy.toml (القاعدة ٢٢).
+# لا تُعدَّل ملفّاتُ clippy.toml يدويًّا: تُعدَّل هذه، ثمّ:
+#   python tools/checks/check.py clippy-config
+# وملفّاتُ الفحص لا يغيّرها إلّا المالك (القاعدة ٢٠).
+#
+# clippy يأخذ أقربَ clippy.toml إلى الحزمة ولا يدمجه بملفّ الجذر،
+# فكلُّ ملفٍّ مولَّدٍ يحمل الأساسَ كاملًا ومعه ما يخصّ حزمتَه.
+
+[base]
+disallowed-macros = [
+    { path = "std::assert", reason = "rule 52: use sad_check!" },
+    { path = "std::assert_eq", reason = "rule 52: use sad_check!" },
+    { path = "std::assert_ne", reason = "rule 52: use sad_check!" },
+    { path = "std::debug_assert", reason = "rule 52: use sad_check!" },
+    { path = "std::debug_assert_eq", reason = "rule 52: use sad_check!" },
+    { path = "std::debug_assert_ne", reason = "rule 52: use sad_check!" },
+    { path = "std::unreachable", reason = "rule 53: use sad_unreachable!" },
+    { path = "std::panic", reason = "rule 53: use sad_unreachable!" },
+    { path = "std::todo", reason = "rule 53: use sad_unreachable!" },
+    { path = "std::unimplemented", reason = "rule 53: use sad_unreachable!" },
+]
+disallowed-methods = [
+    { path = "std::boxed::Box::leak", reason = "rule 7" },
+    { path = "std::mem::forget", reason = "rule 7" },
+]
+
+# القاعدة ٦٠: تُمدَّد لكلّ نوعٍ وكلّ اسم: <type>::<name>
+[base.float-functions]
+types = ["f64", "f32"]
+transcendental = [
+    "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
+    "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
+    "exp", "exp2", "exp_m1", "ln", "log", "log2", "log10", "ln_1p",
+    "powf", "powi", "cbrt", "hypot", "sin_cos",
+]
+transcendental-reason = "rule 60: CORE-MATH"
+fused = ["mul_add"]
+fused-reason = "rule 60: no FMA"
+
+# القاعدة ٨: الروابطُ في شجرة النحو والتمثيل الوسيط فهارس
+[[group]]
+rule = 8
+crates = ["sad_ast", "sad_ir"]
+disallowed-types = [
+    { path = "std::rc::Rc", reason = "rule 8: use typed indices" },
+    { path = "std::rc::Weak", reason = "rule 8: use typed indices" },
+    { path = "std::cell::RefCell", reason = "rule 8: use typed indices" },
+]
+
+# القاعدة ١٤: لا ترتيبَ عشوائيًّا فيما يصل إلى الخرج
+[[group]]
+rule = 14
+crates = [
+    "sad_diagnostics",
+    "sad_ir",
+    "sad_codegen_llvm",
+    "sad_link",
+    "sad_worker_protocol",
+]
+disallowed-types = [
+    { path = "std::collections::HashMap", reason = "rule 14: nondeterministic order" },
+    { path = "std::collections::HashSet", reason = "rule 14: nondeterministic order" },
+]

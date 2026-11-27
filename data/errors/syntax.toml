@@ -1,0 +1,6 @@
+# عائلةُ نحو 100: النحو. والصيغةُ في catalog.toml.
+schema = 1
+
+[family]
+number = 100
+name = "نحو"

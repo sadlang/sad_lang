@@ -1,0 +1,17 @@
+[package]
+name = "sad_session"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+sad_diagnostics = { version = "0.0.0", path = "../sad_diagnostics" }
+sad_span = { version = "0.0.0", path = "../sad_span" }
+
+[dev-dependencies]
+sad_check = { version = "0.0.0", path = "../sad_check" }

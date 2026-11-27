@@ -1,0 +1,21 @@
+[package]
+name = "sad_diagnostics"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[build-dependencies]
+sad_toml = { version = "0.0.0", path = "../sad_toml" }
+sad_unicode = { version = "0.0.0", path = "../sad_unicode" }
+
+[dependencies]
+sad_check = { version = "0.0.0", path = "../sad_check" }
+sad_unicode = { version = "0.0.0", path = "../sad_unicode" }
+
+[dev-dependencies]
+sad_toml = { path = "../sad_toml" }

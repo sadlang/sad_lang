@@ -1,0 +1,1 @@
+rule 46: syntax.toml: error 100001: name 'أول' has hamza on alef

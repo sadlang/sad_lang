@@ -1,0 +1,1 @@
+rule 51: syntax.toml: error 100001: name 'اَول' has U+064E

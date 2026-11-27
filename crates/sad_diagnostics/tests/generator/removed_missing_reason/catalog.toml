@@ -1,0 +1,10 @@
+schema = 1
+removed = [{ code = 100009, name = "نحو.ب", removed = "2026-11-27" }]
+
+[format]
+digits = "٠١٢٣٤٥٦٧٨٩"
+
+[severity]
+error = "خطأ"
+warning = "تحذير"
+note = "ملاحظة"

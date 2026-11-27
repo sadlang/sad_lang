@@ -1,0 +1,41 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+license = "Apache-2.0 WITH LLVM-exception"
+rust-version = "1.96"
+
+[workspace.lints.rust]
+# القاعدة ٣: unsafe ممنوعٌ في كلّ صندوقٍ إلّا sad_llvm، وجدولُه نسخةٌ من هذا بلا هذا السطر، يفحصها check.py
+unsafe_code = "forbid"
+non_ascii_idents = "forbid"
+text_direction_codepoint_in_comment = "forbid"
+unreachable_pub = "deny"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+undocumented_unsafe_blocks = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+wildcard_enum_match_arm = "deny"
+as_conversions = "deny"
+disallowed_methods = "deny"
+disallowed_types = "deny"
+disallowed_macros = "deny"
+# القاعدة ١٩: لا #[allow]، والإعفاءُ بـ#[expect(..., reason = "...")] وحده
+allow_attributes = "deny"
+allow_attributes_without_reason = "deny"
+
+# فحصُ الفيضان مفعَّلٌ في كلّ ملفّات تعريف البناء (القاعدة ٥٧)
+[profile.dev]
+overflow-checks = true
+
+[profile.release]
+overflow-checks = true
+
+[profile.sanitize]
+inherits = "dev"

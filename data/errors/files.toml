@@ -1,0 +1,142 @@
+# عائلةُ ملفات 700: قراءةُ ملفّ المصدر (ق‑١٠). والصيغةُ في catalog.toml.
+schema = 1
+
+[family]
+number = 700
+name = "ملفات"
+
+[[error]]
+code = 700001
+id = "NoInputFile"
+name = "ملفات.لا_ملف"
+page = "reference/errors/files/700001"
+severity = "error"
+message = "لم يُعطَ المترجمُ ملفَّ مصدرٍ ليترجمه"
+params = []
+
+[[error]]
+code = 700002
+id = "TooManyInputs"
+name = "ملفات.اكثر_من_ملف"
+page = "reference/errors/files/700002"
+severity = "error"
+message = "أُعطي المترجمُ أكثرَ من ملفّ، وهو يقبل ملفَّ مصدرٍ واحدًا"
+params = []
+
+[[error]]
+code = 700003
+id = "WrongExtension"
+name = "ملفات.امتداد_خاطئ"
+page = "reference/errors/files/700003"
+severity = "error"
+message = "«{path}» ليس ملفَّ مصدر: امتدادُ ملفّ المصدر «.{extension}»"
+params = [
+    { name = "path", kind = "path" },
+    { name = "extension", kind = "text" },
+]
+
+[[error]]
+code = 700004
+id = "FileNotFound"
+name = "ملفات.غير_موجود"
+page = "reference/errors/files/700004"
+severity = "error"
+message = "الملفّ «{path}» غيرُ موجود"
+params = [{ name = "path", kind = "path" }]
+
+[[error]]
+code = 700005
+id = "IsDirectory"
+name = "ملفات.مجلد"
+page = "reference/errors/files/700005"
+severity = "error"
+message = "«{path}» مجلّدٌ لا ملفّ"
+params = [{ name = "path", kind = "path" }]
+
+[[error]]
+code = 700006
+id = "PermissionDenied"
+name = "ملفات.لا_اذن"
+page = "reference/errors/files/700006"
+severity = "error"
+message = "لا إذنَ بقراءة الملفّ «{path}»"
+params = [{ name = "path", kind = "path" }]
+
+[[error]]
+code = 700007
+id = "ReadFailed"
+name = "ملفات.فشل_القراءة"
+page = "reference/errors/files/700007"
+severity = "error"
+# ونصُّ نظام التشغيل لا يدخل العنوان: يتبعه ملاحظةُ 700011 (قرارُ المالك ٢٠٢٦-١١-٢٧).
+message = "تعذّرت قراءةُ الملفّ «{path}»"
+params = [{ name = "path", kind = "path" }]
+
+[[error]]
+code = 700008
+id = "InvalidUtf8"
+name = "ملفات.ترميز_خاطئ"
+page = "reference/errors/files/700008"
+severity = "error"
+message = "الملفّ «{path}» ليس بترميز UTF-8: البايتُ عند الإزاحة {offset} لا يصحّ فيه"
+params = [
+    { name = "path", kind = "path" },
+    { name = "offset", kind = "count" },
+]
+
+[[error]]
+code = 700009
+id = "InvalidFileName"
+name = "ملفات.اسم_غير_صالح"
+page = "reference/errors/files/700009"
+severity = "error"
+message = "«{path}» ليس اسمَ ملفٍّ صالحًا في نظام التشغيل"
+params = [{ name = "path", kind = "path" }]
+
+[[error]]
+code = 700010
+id = "FileInUse"
+name = "ملفات.مقفل"
+page = "reference/errors/files/700010"
+severity = "error"
+message = "الملفّ «{path}» مقفلٌ ببرنامجٍ آخر، فلا يُقرأ"
+params = [{ name = "path", kind = "path" }]
+
+[[error]]
+code = 700011
+id = "SystemDetail"
+name = "ملفات.نص_النظام"
+page = "reference/errors/files/700011"
+severity = "note"
+message = "قال نظامُ التشغيل: {detail}"
+params = [{ name = "detail", kind = "text" }]
+
+[[error]]
+code = 700012
+id = "NotRegularFile"
+name = "ملفات.ليس_ملفا_عاديا"
+page = "reference/errors/files/700012"
+severity = "error"
+message = "«{path}» ليس ملفًّا عاديًّا"
+params = [{ name = "path", kind = "path" }]
+
+[[error]]
+code = 700013
+id = "FileTooLarge"
+name = "ملفات.كبير_جدا"
+page = "reference/errors/files/700013"
+severity = "error"
+message = "الملفّ «{path}» أكبرُ من {limit} بايت"
+params = [
+    { name = "path", kind = "path" },
+    { name = "limit", kind = "count" },
+]
+
+[[error]]
+code = 700014
+id = "ExtensionWithoutName"
+name = "ملفات.امتداد_بلا_اسم"
+page = "reference/errors/files/700014"
+severity = "error"
+message = "«{path}» امتدادٌ بلا اسم ملفّ"
+params = [{ name = "path", kind = "path" }]

@@ -1,0 +1,120 @@
+# وصفةُ بناء LLVM المثبَّت (ق‑٧: «ووصفةُ بناء LLVM في المستودع، فتُعاد أيُّ حزمةٍ حرفيًّا»).
+# ينفّذها build_llvm.py، ولا يُبنى LLVM بغيرها.
+#
+# - إصدارٌ واحدٌ يحكم كلَّ ما يُوزَّع: مكتباتُ LLVM تُبنى هنا، وClang وlld وأداتا الفحص والتنسيق
+#   تُنسخ من حزمة LLVM الرسميّة للإصدار نفسه، وهي نفسُها المترجمُ الذي يبني (bootstrap).
+# - إعدادٌ واحد، بتوكيداته مفعّلة. وكلُّ إعدادٍ يكسر الربطَ إن اختلف مكتوبٌ هنا صراحةً.
+# - يُبنى في التكامل المستمرّ عند الترقية وحدها. ولا يبني المتطوّعُ LLVM.
+#
+# القيمُ في cmake تُمرَّر كما هي بـ-D. و{bootstrap} مجلّدُ حزمة المترجم الذي يبني بعد فكّها.
+schema = 1
+
+[llvm]
+version = "23.1.3"
+source_url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.3/llvm-project-23.1.3.src.tar.xz"
+source_sha256 = "c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34"
+# Intel وARM، للحواسيب والهواتف (ق‑٧: المنصّاتُ كلُّها معًا من البداية).
+targets = ["X86", "AArch64", "ARM"]
+
+# ── إعداداتٌ مشتركةٌ بين كلّ المنصّات ──
+[cmake]
+CMAKE_BUILD_TYPE = "Release"
+# التوكيداتُ مفعّلة: تمسك أكثرَ أخطاء المبتدئين في واجهة LLVM.
+LLVM_ENABLE_ASSERTIONS = "ON"
+LLVM_ABI_BREAKING_CHECKS = "WITH_ASSERTS"
+# ما يكسر الربطَ إن اختلف: مكتباتٌ ساكنة، وبلا استثناءاتٍ ولا RTTI (والحشوةُ تطابقه).
+BUILD_SHARED_LIBS = "OFF"
+LLVM_ENABLE_RTTI = "OFF"
+LLVM_ENABLE_EH = "OFF"
+# LLVM وحده، وClang وlld من الحزمة الرسميّة.
+LLVM_ENABLE_PROJECTS = ""
+LLVM_ENABLE_RUNTIMES = ""
+# الأدواتُ تُبنى وتُثبَّت: منها llvm-config الذي يحتاجه llvm-sys، وأدواتُ lit (FileCheck وnot وcount).
+LLVM_BUILD_TOOLS = "ON"
+LLVM_BUILD_UTILS = "ON"
+LLVM_INSTALL_UTILS = "ON"
+LLVM_INCLUDE_TESTS = "OFF"
+LLVM_INCLUDE_EXAMPLES = "OFF"
+LLVM_INCLUDE_BENCHMARKS = "OFF"
+LLVM_INCLUDE_DOCS = "OFF"
+LLVM_ENABLE_BINDINGS = "OFF"
+# لا مكتباتِ نظامٍ اختياريّة، فلا يتعلّق الربطُ بما على جهاز البناء.
+LLVM_ENABLE_ZLIB = "OFF"
+LLVM_ENABLE_ZSTD = "OFF"
+LLVM_ENABLE_LIBXML2 = "OFF"
+LLVM_ENABLE_LIBEDIT = "OFF"
+LLVM_ENABLE_CURL = "OFF"
+LLVM_ENABLE_HTTPLIB = "OFF"
+LLVM_ENABLE_FFI = "OFF"
+LLVM_ENABLE_Z3_SOLVER = "OFF"
+LLVM_ENABLE_LIBPFM = "OFF"
+LLVM_ENABLE_PLUGINS = "OFF"
+LLVM_ENABLE_LTO = "OFF"
+
+# ── Windows على Intel: الحزمةُ الوحيدة الجاهزة اليوم ──
+[host.windows-x64]
+ready = true
+bootstrap_url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.3/clang+llvm-23.1.3-x86_64-pc-windows-msvc.tar.xz"
+bootstrap_sha256 = "9ee6a2192fbb30c776415af529927f76ca6b5d1d55699bb1315f9878e610b5b8"
+# أدواتُ مايكروسوفت بإصدارٍ مثبَّت (ق‑٧)، ويرفض السكربتُ غيرَها.
+msvc_tools_version = "14.50.35717"
+windows_sdk_version = "10.0.26100.0"
+# ما يُنسخ من الحزمة الرسميّة إلى مجلّد التثبيت.
+copy_from_bootstrap = [
+    "bin/clang.exe",
+    "bin/clang++.exe",
+    "bin/clang-cl.exe",
+    "bin/clang-format.exe",
+    "bin/clang-tidy.exe",
+    "bin/lld.exe",
+    "bin/lld-link.exe",
+    "bin/ld.lld.exe",
+    "bin/ld64.lld.exe",
+    "lib/clang",
+]
+
+[host.windows-x64.cmake]
+CMAKE_C_COMPILER = "{bootstrap}/bin/clang-cl.exe"
+CMAKE_CXX_COMPILER = "{bootstrap}/bin/clang-cl.exe"
+CMAKE_LINKER = "{bootstrap}/bin/lld-link.exe"
+CMAKE_AR = "{bootstrap}/bin/llvm-lib.exe"
+CMAKE_MT = "{bootstrap}/bin/llvm-mt.exe"
+LLVM_USE_LINKER = "lld"
+# مكتبةُ تشغيل الإصدار (/MD)، وبها يربط Rust على هدف msvc.
+CMAKE_MSVC_RUNTIME_LIBRARY = "MultiThreadedDLL"
+LLVM_HOST_TRIPLE = "x86_64-pc-windows-msvc"
+LLVM_DEFAULT_TARGET_TRIPLE = "x86_64-pc-windows-msvc"
+LLVM_ENABLE_DIA_SDK = "OFF"
+LLVM_ENABLE_PDB = "OFF"
+LLVM_BUILD_LLVM_C_DYLIB = "ON"
+
+# ── الحزمُ الباقية: مسوّدات، لا تُبنى حتّى تكتمل ──
+# ينقصها رابطُ حزمة المترجم الرسميّة وبصمتُها، وما في «missing».
+
+[host.windows-arm64]
+ready = false
+missing = ["bootstrap_url", "bootstrap_sha256", "msvc_tools_version", "windows_sdk_version"]
+
+[host.linux-x64]
+ready = false
+missing = ["bootstrap_url", "bootstrap_sha256", "نظامُ البناء القديم وإصدارُ glibc فيه"]
+
+[host.linux-x64.cmake]
+CMAKE_C_COMPILER = "{bootstrap}/bin/clang"
+CMAKE_CXX_COMPILER = "{bootstrap}/bin/clang++"
+LLVM_USE_LINKER = "lld"
+# libc++ مربوطةً ربطًا ساكنًا، فتعمل الحزمةُ على التوزيعات القديمة (ق‑٧).
+LLVM_ENABLE_LIBCXX = "ON"
+LLVM_STATIC_LINK_CXX_STDLIB = "ON"
+
+[host.linux-arm64]
+ready = false
+missing = ["bootstrap_url", "bootstrap_sha256", "نظامُ البناء القديم وإصدارُ glibc فيه"]
+
+[host.macos-x64]
+ready = false
+missing = ["bootstrap_url", "bootstrap_sha256", "CMAKE_OSX_DEPLOYMENT_TARGET", "الحدُّ الأدنى لإصدار Xcode"]
+
+[host.macos-arm64]
+ready = false
+missing = ["bootstrap_url", "bootstrap_sha256", "CMAKE_OSX_DEPLOYMENT_TARGET", "الحدُّ الأدنى لإصدار Xcode"]

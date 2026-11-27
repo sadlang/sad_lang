@@ -1,0 +1,14 @@
+schema = 1
+
+[family]
+number = 200
+name = "انواع"
+
+[[error]]
+code = 100002
+id = "Moved"
+name = "انواع.منقول"
+page = "reference/errors/types/100002"
+severity = "error"
+message = "في «{path}» عند {offset}"
+params = [{ name = "path", kind = "text" }, { name = "offset", kind = "count" }]

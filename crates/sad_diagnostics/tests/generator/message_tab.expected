@@ -1,0 +1,1 @@
+rule 48: syntax.toml: error 100001: 'message' has hidden or control character U+0009

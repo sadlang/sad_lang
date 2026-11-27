@@ -1,0 +1,1 @@
+rule 51: [source_file] extension must be a string
