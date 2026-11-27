@@ -1,5 +1,6 @@
 # بوّابةُ الدمج: كلُّ خطوةٍ تمنع الدمجَ إن فشلت (دليلُ الأسلوب، القواعد ١٦ و١٧ و٢٠ و٧١ و٨١).
-# لينكس وWindows معًا، ولا يُخفي فشلُ منصّةٍ فشلَ الأخرى.
+# لينكس وWindows وmacOS معًا، ولا يُخفي فشلُ منصّةٍ فشلَ غيرها. وmacOS بمعالجَي ARM وIntel،
+# فق‑٧ يجعل المنصّاتِ المضيفة كلَّها من البداية بالمعالجين (٢٠٢٦-١١-٢٧).
 #
 # أدواتُ الفرض من الفرع الأساسيّ (القاعدة ٨١): شفرةُ سكربت الفحص تُؤخذ من الفرع الأساسيّ وتُشغَّل على شجرة الطلب،
 # فلا يُضعف طلبٌ الفحصَ ثمّ يمرّ به. أمّا السياساتُ (clippy_policy.toml وcrate_deps.toml) فمن الطلب نفسِه،
@@ -22,7 +23,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # macos-latest بمعالج Apple Silicon (ARM)، وmacos-15-intel بمعالج Intel.
+        os: [ubuntu-latest, windows-latest, macos-latest, macos-15-intel]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     defaults:
