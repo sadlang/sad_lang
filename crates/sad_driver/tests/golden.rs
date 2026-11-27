@@ -391,7 +391,7 @@ fn guards_reject_a_case_in_another_family() {
 
 #[test]
 fn guards_reject_a_second_line_from_another_family() {
-    // أميليا الثالثة، ث‑١: سطرٌ ثانٍ من عائلةٍ أخرى كان يمرّ لأنّ الرمزَ الأوّل وحدَه يُفحص.
+    // سطرٌ ثانٍ من عائلةٍ أخرى كان يمرّ لأنّ الرمزَ الأوّل وحدَه يُفحص.
     let tree = TreeCopy::new("second_line");
     tree.write(
         "files/mixed/expected.stderr",

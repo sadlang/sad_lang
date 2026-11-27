@@ -343,7 +343,7 @@ mod tests {
         sad_check!(matches!(err, LoadError::ExtensionWithoutName), "{err:?}");
     }
 
-    /// `<` ممنوعٌ في أسماء ملفّات Windows، فيُحوَّل io::ErrorKind::InvalidFilename إلى خطئه (مراجعةُ مراد الثانية، N8).
+    /// `<` ممنوعٌ في أسماء ملفّات Windows، فيُحوَّل io::ErrorKind::InvalidFilename إلى خطئه.
     #[cfg(windows)]
     #[test]
     fn invalid_windows_name_is_its_own_error() {

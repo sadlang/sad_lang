@@ -97,7 +97,7 @@ fn rejects_what_it_does_not_read() -> Result<(), String> {
         ("a = 1\r", "CR without LF"),
         ("= 1\n", "expected a bare key"),
         ("a = 99999999999999999999\n", "bad integer"),
-        // مراجعةُ أميليا الثانية (ث‑١) ومراد الثانية (N10): ما يرفضه TOML 1.0، ومساراتُ رفضٍ بلا اختبار.
+        // ما يرفضه TOML 1.0، ومساراتُ رفضٍ أخرى.
         ("a = 007\n", "leading zero in integer '007'"),
         ("a = -01\n", "leading zero in integer '-01'"),
         ("a = \"\\u+041\"\n", "bad \\u escape '+041'"),
@@ -122,7 +122,7 @@ fn rejects_what_it_does_not_read() -> Result<(), String> {
 
 #[test]
 fn limits_nesting_depth() -> Result<(), String> {
-    // الحدُّ نفسُه مختبَر: ٣٣ مصفوفةً متداخلة تُقبل، و٣٤ تُرفض (القاعدة ١٠، مراجعةُ مراد الثالثة).
+    // الحدُّ نفسُه مختبَر: ٣٣ مصفوفةً متداخلة تُقبل، و٣٤ تُرفض (القاعدة ١٠).
     let nested = |n: usize| format!("a = {}{}\n", "[".repeat(n), "]".repeat(n));
     parse(&nested(33)).map_err(|e| format!("33 levels rejected: {e}"))?;
     match parse(&nested(34)) {

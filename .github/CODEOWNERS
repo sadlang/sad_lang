@@ -11,7 +11,7 @@
 /rustfmt.toml             @SalehKadah
 /rust-toolchain.toml      @SalehKadah
 /.gitattributes           @SalehKadah
-# والمولّدان وبياناتُهما: ما يقرّر نصَّ الرسائل وما يرفضه المولّد (مراجعةُ مراد الثالثة).
+# والمولّدان وبياناتُهما: ما يقرّر نصَّ الرسائل وما يرفضه المولّد.
 /data/                                @SalehKadah
 /crates/sad_diagnostics/catalog_gen.rs @SalehKadah
 /crates/sad_span/source_gen.rs        @SalehKadah
