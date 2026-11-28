@@ -1,0 +1,399 @@
+# بناءُ LLVM المثبَّت للمنصّات الستّ (ق‑٧): «تُبنى في التكامل المستمرّ عند الترقية وحدها».
+# الوصفةُ في tools/llvm_build/llvm_build.toml، وينفّذها build_llvm.py.
+#
+# - في طلب الدمج لا يُبنى إلّا إذا غيّر الطلبُ الوصفةَ أو سكربتَ البناء أو هذا الملفّ، وعليه الوسمُ llvm-build:
+#   فالبناءُ ستّةُ أجهزةٍ لساعات. وما دام الوسمُ على الطلب أُعيد البناءُ مع كلّ دفعٍ يغيّر الوصفة، فيُرفع الوسمُ
+#   بعد بناءٍ ناجحٍ إن لم يُرَد ذلك. ودفعٌ لا يغيّر الوصفة يأخذ حكمَ ما قبله،
+#   بالوسم وبلا وسم. والفحصُ «llvm (verdict)» إلزاميٌّ في حماية الفرع، يفشل إن تغيّرت الوصفةُ ولم تُبنَ على
+#   المنصّات الستّ، فلا تُدمج وصفةٌ لم تُبنَ.
+# - ولا يُعدّ تغييرًا في الوصفة تغييرُ الاختبارات وسكربتِ التنزيل وci_decide.py، فهي لا تغيّر حزمة،
+#   ولا تغييرُ [package] في الوصفة، فبصماتُ الحزم المنشورة تُكتب بعد النشر (recipe_digest في build_llvm.py).
+# - ووضعُ وسمٍ آخرَ أو رفعُ وسم لا يبني: يأخذ الحكمُ حكمًا ناجحًا سابقًا على الإيداع نفسه، إن كان بُني على
+#   الوصفة نفسها (ci_decide.py).
+# - ويُشغَّل باليد، لكلّ المنصّات أو لبعضها (hosts)، فتُقاس منصّةٌ وحدها. والبناءُ الجزئيّ ليس حكمًا.
+# - وهذا الملفُّ يُشغَّل في الطلب بنسخة الطلب نفسه، فطلبٌ يغيّره قد يجعل الحكمَ ينجح بلا بناء. ولذلك
+#   .github/ وtools/llvm_build/ في CODEOWNERS، فلا يُدمج تغييرٌ فيهما بلا مراجعة المالك.
+# - والحكمُ على إيداع الدمج ساعةَ التشغيل. فإن دخل main بعده تغييرٌ في الوصفة لم يُعِد تشغيلَه شيء، ولذلك
+#   تشترط حمايةُ main أن يكون الفرعُ محدَّثًا (Require branches to be up to date). وطابورُ الدمج (merge queue)
+#   لا يدعمه هذا السير: لا مشغّلَ فيه لـmerge_group، فيعلق الفحصُ الإلزاميّ.
+# - وقبل البناء فحصٌ في دقيقة: اختباراتُ السكربتين، وأنّ كلَّ رابطٍ في الوصفة موجود. فلا تُصرف ستُّ ساعاتٍ
+#   على ستّة أجهزةٍ لخطأٍ يُرى قبلها.
+# - والنشرُ من main وحده وباليد، وللمنصّات الستّ معًا: إصدارٌ اسمُه llvm-<الإصدار>، فيه حزمةٌ وبصمتُها لكلّ منصّة،
+#   وشهادةُ منشأٍ من GitHub لكلّ حزمة. وهو «أرشفةٌ دائمةٌ لكلّ حزمةٍ بُنيت» (ق‑٧ §٨): تُفعَّل الإصداراتُ الثابتة
+#   في إعدادات المستودع، فلا تُعدَّل ملفّاتُ إصدارٍ نُشر، ولا يُنقل وسمُه، ولا يُعاد اسمُه إن حُذف.
+#   ولذلك يُنشأ مسودّةً، ويُتحقَّق منه، ثمّ يُنشر.
+name: llvm
+
+on:
+  # بلا paths: الفحصُ «llvm (verdict)» إلزاميّ، فيجب أن يُشغَّل في كلّ طلب، ويحكم عملُ changes هل تغيّرت الوصفة.
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "انشر الحزمَ في إصدار (من main وحده، وللمنصّات الستّ)"
+        type: boolean
+        default: false
+      hosts:
+        description: "المنصّاتُ مفصولةً بفاصلة، أو all"
+        type: string
+        default: all
+
+permissions:
+  contents: read
+
+# بناءٌ واحدٌ لكلّ فرع، ويُلغى القديمُ إن دُفع جديد. والنشرُ في مجموعةٍ وحده، فلا يلغيه بناءٌ يُشغَّل بعده
+# على main، ولا يُلغى نشرٌ بنشر. وinputs فارغٌ في pull_request، فهو بناء. ووضعُ وسمٍ غيرِ llvm-build، أو رفعُ
+# أيّ وسم، لا يبني، ففي مجموعةٍ وحده (برقم التشغيل)، فلا يلغي بناءً جاريًا. والتشغيلُ اليدويّ لبعض المنصّات
+# في مجموعةٍ باسمها، فلا يلغي قياسٌ بناءً كاملًا.
+concurrency:
+  group: llvm-${{ github.ref }}-${{ inputs.publish && 'publish' || 'build' }}${{ inputs.hosts && inputs.hosts != 'all' && format('-{0}', inputs.hosts) || '' }}${{ (github.event.action == 'unlabeled' || (github.event.action == 'labeled' && github.event.label.name != 'llvm-build')) && format('-{0}', github.run_id) || '' }}
+  cancel-in-progress: ${{ !inputs.publish }}
+
+jobs:
+  # هل تغيّرت الوصفة، وهل يُبنى، ولأيّ المنصّات. في ثوانٍ، وفي كلّ طلب.
+  changes:
+    name: llvm (changes)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    # checks: read ليسأل قبل البناء عن حكمٍ سابقٍ بالبصمة نفسها، وactions: read ليتحقّق أنّه من هذا السير.
+    permissions:
+      contents: read
+      checks: read
+      actions: read
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      recipe: ${{ steps.c.outputs.recipe }}
+      build: ${{ steps.c.outputs.build }}
+      reuse: ${{ steps.c.outputs.reuse }}
+      full: ${{ steps.c.outputs.full }}
+      digest: ${{ steps.c.outputs.digest }}
+      matrix: ${{ steps.c.outputs.matrix }}
+    steps:
+      # HEAD في طلب الدمج إيداعُ الدمج، وأبوه الأوّل رأسُ الفرع الهدف ساعتَها: فالفرقُ بينهما ما يغيّره الطلبُ وحده.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      # القرارُ في ci_decide.py، وله اختباراتُه في test_build_llvm.py: هل تغيّرت الوصفة، وهل يُبنى،
+      # وهل يأخذ الحكمُ حكمًا سابقًا، وبصمةُ الوصفة التي يُبنى عليها. ويرفض النشرَ من غير main أو لبعض المنصّات.
+      - id: c
+        env:
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          LABEL: ${{ github.event.label.name }}
+          LABELED: ${{ contains(github.event.pull_request.labels.*.name, 'llvm-build') }}
+          HOSTS: ${{ inputs.hosts }}
+          PUBLISH: ${{ inputs.publish }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BEFORE: ${{ github.event.before }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PYTHONDONTWRITEBYTECODE: "1"
+        # الرسائلُ وأسبابُ الرفض في السجلّ، والمخرجاتُ في ملفٍّ وحده.
+        run: |
+          DECISION="$RUNNER_TEMP/decision" python3 tools/llvm_build/ci_decide.py changes
+          matrix=$(python3 tools/llvm_build/hosts_matrix.py)
+          { cat "$RUNNER_TEMP/decision"; echo "matrix=$matrix"; } >> "$GITHUB_OUTPUT"
+          echo "matrix=$matrix"
+
+  preflight:
+    name: llvm (preflight)
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      # المرشِّحان، وتعريفاتُ cmake لكلّ منصّة، والتنزيلُ والحزمُ والفكّ (بلا إنترنت).
+      - name: tests
+        run: python -m unittest tools/llvm_build/test_build_llvm.py
+
+      # كلُّ رابطٍ في الوصفة يُجيب، فلا يفشل بناءٌ بعد دقائقَ لرابطٍ خاطئ. والبصمةُ يتحقّق منها البناءُ نفسُه.
+      - name: urls
+        run: |
+          python - > "$RUNNER_TEMP/urls" <<'EOF'
+          import tomllib
+          r = tomllib.load(open("tools/llvm_build/llvm_build.toml", "rb"))
+          print(r["llvm"]["source_url"])
+          for host in r["host"].values():
+              if "bootstrap_url" in host:
+                  print(host["bootstrap_url"])
+          EOF
+          while read -r url; do
+            echo "$url"
+            curl -fsSIL --retry 3 -o /dev/null "$url"
+          done < "$RUNNER_TEMP/urls"
+
+  build:
+    name: llvm (${{ matrix.host }})
+    needs: [changes, preflight]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.changes.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    # حدُّ المهمّة في GitHub ستُّ ساعات، ويُترك هامشٌ للحزم والرفع.
+    timeout-minutes: 350
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      # ninja بإصدارٍ مثبَّت على كلّ الأجهزة، فبعضُ الصور بلا ninja، وعلى Windows يقدّم Visual Studio غيرَه.
+      # وcmake من صورة الجهاز، ويُسجَّل إصدارُه في الختم. وxz للحزم على كلّ الأنوية، فبغيره يحزم Python
+      # على نواةٍ واحدةٍ بعد ساعات البناء وقد لا يبقى له وقت. ويفشل هنا في ثوانٍ إن غاب شيء، لا بعد التنزيل والفكّ.
+      - name: tools
+        run: |
+          python -m pip install --disable-pip-version-check ninja==1.13.2
+          cmake --version
+          ninja --version
+          xz --version
+          python --version
+
+      # مجلّدُ العمل: قصيرٌ على Windows لطول المسارات. وعلى لينكس في الأوسع من /mnt ومجلّدِ الجهاز المؤقّت،
+      # فبعضُ الأجهزة لا قرصَ مؤقّتًا لها في /mnt، فينجح mkdir هناك على القرص الأصليّ نفسِه.
+      - name: work dir
+        id: work
+        run: |
+          case "$RUNNER_OS" in
+            Windows) dir='C:\llvm' ;;
+            Linux)
+              dir="$RUNNER_TEMP/llvm"
+              if sudo mkdir -p /mnt/llvm; then
+                sudo chown "$(id -u):$(id -g)" /mnt/llvm
+                mnt=$(df -Pk /mnt/llvm | awk 'NR==2 {print $4}')
+                tmp=$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')
+                if [ "$mnt" -gt "$tmp" ]; then dir=/mnt/llvm; fi
+              fi ;;
+            *) dir="$RUNNER_TEMP/llvm" ;;
+          esac
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+          df -h . "$RUNNER_TEMP" /mnt 2>/dev/null || true
+
+      # المسارُ في متغيّر بيئة، لا في نصّ الأمر: فلا تفسّر bash ما فيه. وتقدّمُ ninja بالزمن في السجلّ،
+      # والمهلةُ الداخليّة لـninja قبل حدّ المهمّة بخمسين دقيقة، للتحقّق والحزم والرفع. فإن طال البناءُ عُرف
+      # ما أُنجز منه، وبقيت خطوةُ disk.
+      - name: build
+        env:
+          WORK: ${{ steps.work.outputs.dir }}
+          HOST: ${{ matrix.host }}
+          NINJA_STATUS: "[%f/%t %es] "
+        run: python tools/llvm_build/build_llvm.py --host "$HOST" --work "$WORK" --package dist --deadline-minutes 300
+
+      # ما بقي من القرص بعد البناء وحجمُ الحزمة، ليُكتبا في ق‑٧ بعد أوّل قياس.
+      - name: disk
+        if: always()
+        run: |
+          df -h . 2>/dev/null || true
+          ls -l dist 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sad-llvm-${{ matrix.host }}
+          path: dist/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  # الحكمُ الإلزاميّ في حماية الفرع: ينجح إن لم تتغيّر الوصفة، أو بُنيت ونجحت على المنصّات الستّ.
+  # والحمايةُ تأخذ أحدثَ فحصٍ بهذا الاسم على الإيداع، فلا يُتخطّى (المتخطّى يُحسب نجاحًا). والتشغيلُ اليدويّ لبعض
+  # المنصّات قياسٌ باسمٍ آخر، «llvm (measure)»، فلا يكتب فوق حكمٍ ناجح. وإن فشل عملُ changes فالاسمُ اسمُ الحكم.
+  verdict:
+    name: ${{ needs.changes.outputs.full == 'false' && 'llvm (measure)' || 'llvm (verdict)' }}
+    needs: [changes, preflight, build]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      checks: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: tools/llvm_build
+
+      # القرارُ في ci_decide.py. وبعد بناءٍ كاملٍ ناجح يكتب بصمةَ الوصفة ملاحظةً على هذا الفحص، فلا يأخذ
+      # تشغيلٌ لاحقٌ حكمًا سابقًا إلّا ببصمة الوصفة نفسها.
+      - name: verdict
+        shell: bash
+        env:
+          RECIPE: ${{ needs.changes.outputs.recipe }}
+          BUILD: ${{ needs.changes.outputs.build }}
+          REUSE: ${{ needs.changes.outputs.reuse }}
+          FULL: ${{ needs.changes.outputs.full }}
+          DIGEST: ${{ needs.changes.outputs.digest }}
+          CHANGES: ${{ needs.changes.result }}
+          PREFLIGHT: ${{ needs.preflight.result }}
+          BUILT: ${{ needs.build.result }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BEFORE: ${{ github.event.before }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          echo "changes=$CHANGES recipe=$RECIPE build=$BUILD reuse=$REUSE full=$FULL digest=$DIGEST preflight=$PREFLIGHT build_result=$BUILT"
+          python3 tools/llvm_build/ci_decide.py verdict
+
+  publish:
+    name: llvm (publish)
+    # ci_decide.py يرفض في عمل changes نشرًا من غير main أو لبعض المنصّات، فلا يُبنى ثمّ يُتخطّى النشرُ بصمت.
+    if: github.event_name == 'workflow_dispatch' && inputs.publish && needs.changes.outputs.full == 'true' && github.ref == 'refs/heads/main'
+    needs: [changes, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    defaults:
+      run:
+        shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: tools/llvm_build
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: sad-llvm-*
+          path: dist
+          merge-multiple: true
+
+      # حزمةٌ لكلّ منصّةٍ باسمها وبالإصدار الذي في الوصفة، ومعها بصمتُها، ولا ملفَّ غيرَها.
+      - name: checksums
+        id: sums
+        working-directory: dist
+        run: |
+          version=$(python3 -c 'import tomllib;print(tomllib.load(open("../tools/llvm_build/llvm_build.toml","rb"))["llvm"]["version"])')
+          for host in linux-x64 linux-arm64 windows-x64 windows-arm64 macos-x64 macos-arm64; do
+            echo "sad-llvm-$version-$host.tar.xz"
+            echo "sad-llvm-$version-$host.tar.xz.sha256"
+          done | sort > "$RUNNER_TEMP/expected"
+          ls | sort | diff "$RUNNER_TEMP/expected" -
+          sha256sum --check --strict *.sha256
+          cat *.sha256 > SHA256SUMS
+          cat SHA256SUMS
+          # حدُّ الملفّ الواحد في إصدارات GitHub ٢ غيبيبايت.
+          for f in *.tar.xz; do
+            [ "$(stat -c %s "$f")" -lt 2147483648 ] || { echo "::error::$f أكبر من ٢ غيبيبايت"; exit 1; }
+          done
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/attest@v4
+        with:
+          subject-path: dist/*.tar.xz
+
+      # الإصدارُ على الإيداع الذي بُني، لا على رأس main ساعةَ النشر. ويُنشأ مسودّةً، فالمسودّةُ وحدها تُعدَّل:
+      # كلُّ مسودّةٍ بقيت من نشرٍ لم يتمّ تُحذف (وقد تتعدّد، فالمسودّةُ بلا وسم)، أمّا إصدارٌ منشورٌ فلا يُكتب فوقه.
+      - name: draft
+        id: draft
+        env:
+          VERSION: ${{ steps.sums.outputs.version }}
+        run: |
+          tag="llvm-$VERSION"
+          releases() {
+            gh api "repos/$GH_REPO/releases" --paginate \
+              --jq ".[] | select(.tag_name == \"$tag\") | \"\(.id) \(.draft)\""
+          }
+          releases > "$RUNNER_TEMP/existing"
+          while read -r id draft; do
+            if [ "$draft" = true ]; then
+              gh api -X DELETE "repos/$GH_REPO/releases/$id"
+            else
+              echo "::error::الإصدار $tag منشورٌ من قبل، ولا يُكتب فوقه. وإن لم يكن ثابتًا فاحذفه باليد (gh release delete $tag --cleanup-tag) ثمّ أعد التشغيل"
+              exit 1
+            fi
+          done < "$RUNNER_TEMP/existing"
+          # وسمٌ بقي من إصدارٍ حُذف من الواجهة: --target يُهمَل معه، فيُنشأ الإصدارُ على إيداعٍ غيرِ الذي بُني.
+          # ولا يُفهم إلّا 404 «لا وسم»: عطلُ الشبكة أو حدُّ الطلبات يُفشل الخطوة، لا يُنشئ الإصدارَ على وسمٍ قديم.
+          if target=$(gh api "repos/$GH_REPO/git/ref/tags/$tag" --jq .object.sha 2>"$RUNNER_TEMP/tag_err"); then
+            if [ "$target" != "$GITHUB_SHA" ]; then
+              echo "::error::الوسم $tag موجودٌ على $target، والمبنيُّ $GITHUB_SHA. احذف الوسمَ باليد إن لم يكن لإصدارٍ ثابت"
+              exit 1
+            fi
+          elif ! grep -q "HTTP 404" "$RUNNER_TEMP/tag_err"; then
+            cat "$RUNNER_TEMP/tag_err"
+            echo "::error::تعذّر السؤالُ عن الوسم $tag"
+            exit 1
+          fi
+          gh release create "$tag" dist/*.tar.xz dist/SHA256SUMS \
+            --draft \
+            --target "$GITHUB_SHA" \
+            --title "LLVM $VERSION" \
+            --notes "حزمُ LLVM $VERSION المبنيّة بوصفة tools/llvm_build/llvm_build.toml من الإيداع $GITHUB_SHA، للمنصّات الستّ (ق‑٧). وتُنزَّل بسكربت التنزيل الواحد، ويُتحقَّق منها بـSHA256SUMS وبـgh attestation verify."
+          # قائمةُ الإصدارات قد تتأخّر بعد الحذف والإنشاء، فتُقرأ ثانيةً قبل أن يُحكم بأنّها ليست مسودّةً واحدة.
+          for attempt in 1 2 3 4 5; do
+            releases > "$RUNNER_TEMP/created"
+            [ "$(wc -l < "$RUNNER_TEMP/created")" -eq 1 ] && break
+            [ "$attempt" -lt 5 ] || { echo "::error::ليست للوسم $tag مسودّةٌ واحدة"; cat "$RUNNER_TEMP/created"; exit 1; }
+            sleep 10
+          done
+          read -r id _ < "$RUNNER_TEMP/created"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+      # ما في المسودّة هو ما بُني، قبل أن يُنشر فيثبت: بصمةُ كلّ حزمةٍ فيها كما في SHA256SUMS، وشهادتُها
+      # تُتحقَّق كما يتحقّق المتطوّع. والمسودّةُ لا تُرى في releases/tags، فتُطلب من قائمة الإصدارات.
+      - name: verify draft
+        env:
+          ID: ${{ steps.draft.outputs.id }}
+        run: |
+          # المسودّةُ على الإيداع الذي بُني.
+          target=$(gh api "repos/$GH_REPO/releases/$ID" --jq .target_commitish)
+          [ "$target" = "$GITHUB_SHA" ] || { echo "::error::المسودّةُ على $target، والمبنيُّ $GITHUB_SHA"; exit 1; }
+          gh api "repos/$GH_REPO/releases/$ID" \
+            --jq '.assets[] | select(.name | endswith(".tar.xz")) | "\(.digest | ltrimstr("sha256:"))  \(.name)"' \
+            | sort | diff <(sort dist/SHA256SUMS) -
+          for f in dist/*.tar.xz; do
+            gh attestation verify "$f" -R "$GH_REPO"
+          done
+
+      # النشرُ ثمّ التحقّقُ أنّه ثابت: فإن لم تكن الإصداراتُ الثابتة مفعّلةً فشلت المهمّة، فيُرى ذلك.
+      # والإعدادُ لا يُقرأ قبل النشر بصلاحيّة هذا السير (يطلب صلاحيّةَ المسؤول)، فتقول الرسالةُ ما يُفعل.
+      # وشهادةُ الإصدار الثابت قد تتأخّر قليلًا بعد النشر، فيُعاد التحقّقُ منها.
+      - name: publish
+        env:
+          VERSION: ${{ steps.sums.outputs.version }}
+          ID: ${{ steps.draft.outputs.id }}
+        run: |
+          tag="llvm-$VERSION"
+          gh api -X PATCH "repos/$GH_REPO/releases/$ID" -F draft=false --jq .html_url
+          # في سطرٍ وحده: إن فشل gh فشلت الخطوة برسالته، ولا يُقال «ليس ثابتًا» لإصدارٍ لم يُقرأ،
+          # فيُحذف باليد إصدارٌ ثابتٌ ويضيع اسمُه.
+          immutable=$(gh release view "$tag" --json isImmutable --jq .isImmutable)
+          if [ "$immutable" != true ]; then
+            echo "::error::نُشر الإصدار $tag وليس ثابتًا (isImmutable=$immutable). احذفه باليد (gh release delete $tag --cleanup-tag)، وفعّل الإصداراتِ الثابتة في إعدادات المستودع، ثمّ أعد التشغيل"
+            exit 1
+          fi
+          for attempt in 1 2 3 4 5; do
+            gh release verify "$tag" && exit 0
+            echo "لم يُتحقَّق من شهادة الإصدار بعد، وتُعاد المحاولةُ $((attempt + 1)) بعد 30 ثانية"
+            sleep 30
+          done
+          echo "::error::تعذّر التحقّقُ من شهادة الإصدار $tag"
+          exit 1

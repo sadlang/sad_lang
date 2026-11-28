@@ -6,6 +6,8 @@
 /tests/conformance/       @SalehKadah
 /crates/*/tests/          @SalehKadah
 /.github/                 @SalehKadah
+# ووصفةُ LLVM وسكربتاها: تحكم ما يُوزَّع على المتطوّعين وبصماتِه (ق‑٧).
+/tools/llvm_build/        @SalehKadah
 # وما يحكم الفحوصَ نفسَها: إعداداتُ clippy والتنسيق وسلسلةُ الأدوات والمقارنةُ بالبايتات.
 /Cargo.toml               @SalehKadah
 /rustfmt.toml             @SalehKadah

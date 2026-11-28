@@ -40,19 +40,23 @@ jobs:
           - platform: linux-arm64
             runner: ubuntu-24.04-arm
             latest: ubuntu-24.04-arm
+          # الصورةُ باسم Visual Studio فيها: windows-2025 وwindows-11-arm اسمان ينتقلان مع كلّ إصدارٍ منه،
+          # فتتغيّر أدواتُ مايكروسوفت بلا طلب. وأُعلن أنّ أسماء VS 2026 يبدأ إيقافُها في ديسمبر ٢٠٢٦
+          # (runner-images#15373، ولم يُؤكَّد)، فيُشغَّل التشغيلُ الشهريّ قبله ليُرى هل في صورة VS 2027 أدواتُ 14.52.
           - platform: windows-x64
-            runner: windows-2025
+            runner: windows-2025-vs2026
             latest: windows-latest
           - platform: windows-arm64
-            runner: windows-11-arm
+            runner: windows-11-vs2026-arm
             latest: windows-11-arm
           - platform: macos-arm64
             runner: macos-26
             latest: macos-latest
-          # آخرُ جهاز Intel في GitHub، ودعمُه حتّى نحو ٢٠٢٧-٠٨. والبديلُ يُحسم قبل ذلك (ق‑٧).
+          # أحدثُ جهاز Intel في GitHub، ولم يُعلَن تاريخُ سحبه. وGitHub يترك Intel على macOS بعد خريف ٢٠٢٧،
+          # والبديلُ يُحسم قبل ذلك (ق‑٧).
           - platform: macos-x64
-            runner: macos-15-intel
-            latest: macos-15-intel
+            runner: macos-26-intel
+            latest: macos-26-intel
     runs-on: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && matrix.runner || matrix.latest }}
     timeout-minutes: 45
     defaults:
@@ -129,6 +133,11 @@ jobs:
       # اختباراتُ الفاحص نفسِه (القواعد ٣٨–٤١): كلُّ فحصٍ يرفض شجرةً تخالفه.
       - name: checker tests
         run: python -m unittest tools/checks/test_check.py
+
+      # اختباراتُ سكربتَي LLVM (ق‑٧) على المنصّات الستّ، في ثوانٍ: فسكربتُ التنزيل يعمل حيث يعمل المتطوّع،
+      # ولا يُشغَّل llvm.yml لتغييره. وليست أداةَ فرض، فتُؤخذ من الطلب لا من الفرع الأساسيّ.
+      - name: llvm script tests
+        run: python -m unittest tools/llvm_build/test_build_llvm.py
 
       # القاعدة ١٤: بناءان في مجلّدين جديدين يعطيان الشفرةَ المولَّدةَ نفسَها.
       - name: deterministic generated code

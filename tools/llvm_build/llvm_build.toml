@@ -1,12 +1,15 @@
-# وصفةُ بناء LLVM المثبَّت (ق‑٧: «ووصفةُ بناء LLVM في المستودع، فتُعاد أيُّ حزمةٍ حرفيًّا»).
-# ينفّذها build_llvm.py، ولا يُبنى LLVM بغيرها.
+# وصفةُ بناء LLVM المثبَّت (ق‑٧: «ووصفةُ بناء LLVM في المستودع، فتُعاد أيُّ حزمةٍ بالوصفة نفسها»).
+# ينفّذها build_llvm.py، ويبنيها سيرُ العمل .github/workflows/llvm.yml للمنصّات الستّ. ولا يُبنى LLVM بغيرها.
 #
 # - إصدارٌ واحدٌ يحكم كلَّ ما يُوزَّع: مكتباتُ LLVM تُبنى هنا، وClang وlld وأداتا الفحص والتنسيق
 #   تُنسخ من حزمة LLVM الرسميّة للإصدار نفسه، وهي نفسُها المترجمُ الذي يبني (bootstrap).
+#   وحيث لا حزمةَ رسميّة (macOS على Intel) تُبنى Clang وlld من المصدر نفسه.
 # - إعدادٌ واحد، بتوكيداته مفعّلة. وكلُّ إعدادٍ يكسر الربطَ إن اختلف مكتوبٌ هنا صراحةً.
 # - يُبنى في التكامل المستمرّ عند الترقية وحدها. ولا يبني المتطوّعُ LLVM.
 #
 # القيمُ في cmake تُمرَّر كما هي بـ-D. و{bootstrap} مجلّدُ حزمة المترجم الذي يبني بعد فكّها.
+# وsanitizer_runtimes مكتباتُ ASan التي تدّعيها المنصّة (ق‑٧ §٥): أنماطُ glob في التثبيت، يتحقّق منها
+# build_llvm.py بعد فكّ الحزمة الرسميّة (حيث تأتي منها) وبعد البناء، فلا تُنشر حزمةٌ بلا ASan.
 schema = 1
 
 [llvm]
@@ -26,10 +29,10 @@ LLVM_ABI_BREAKING_CHECKS = "WITH_ASSERTS"
 BUILD_SHARED_LIBS = "OFF"
 LLVM_ENABLE_RTTI = "OFF"
 LLVM_ENABLE_EH = "OFF"
-# LLVM وحده، وClang وlld من الحزمة الرسميّة.
+# LLVM وحده، وClang وlld من الحزمة الرسميّة (إلّا حيث لا حزمة، فتعيد المنصّةُ تعريفَه).
 LLVM_ENABLE_PROJECTS = ""
 LLVM_ENABLE_RUNTIMES = ""
-# الأدواتُ تُبنى وتُثبَّت: منها llvm-config الذي يحتاجه llvm-sys، وأدواتُ lit (FileCheck وnot وcount).
+# الأدواتُ تُبنى وتُثبَّت: منها llvm-config الذي يقرؤه build.rs في sad_llvm، وأدواتُ lit (FileCheck وnot وcount).
 LLVM_BUILD_TOOLS = "ON"
 LLVM_BUILD_UTILS = "ON"
 LLVM_INSTALL_UTILS = "ON"
@@ -50,16 +53,22 @@ LLVM_ENABLE_Z3_SOLVER = "OFF"
 LLVM_ENABLE_LIBPFM = "OFF"
 LLVM_ENABLE_PLUGINS = "OFF"
 LLVM_ENABLE_LTO = "OFF"
+# ذاكرةُ أجهزة التكامل المستمرّ محدودة (٧ غيغابايت على macOS ARM)، وربطُ الأدوات الساكنة يستهلكها.
+LLVM_PARALLEL_LINK_JOBS = "2"
 
-# ── Windows على Intel: الحزمةُ الوحيدة الجاهزة اليوم ──
+# ── Windows ──
+# أدواتُ مايكروسوفت بإصدارٍ مثبَّت (ق‑٧): 14.52، وهو إصدارٌ طويل الدعم، برقمَيه الأوّلين.
+# ويُسجَّل رقمُه الكامل في الختم، لأنّ أجهزة GitHub تُحدَّث.
+
 [host.windows-x64]
-ready = true
 bootstrap_url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.3/clang+llvm-23.1.3-x86_64-pc-windows-msvc.tar.xz"
 bootstrap_sha256 = "9ee6a2192fbb30c776415af529927f76ca6b5d1d55699bb1315f9878e610b5b8"
-# أدواتُ مايكروسوفت بإصدارٍ مثبَّت (ق‑٧)، ويرفض السكربتُ غيرَها.
-msvc_tools_version = "14.50.35717"
+msvc_tools_version = "14.52"
+msvc_arch = "x64"
+msvc_component = "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
 windows_sdk_version = "10.0.26100.0"
-# ما يُنسخ من الحزمة الرسميّة إلى مجلّد التثبيت.
+# المجلّدُ windows/ أو مجلّدُ الهدف، بحسب LLVM_ENABLE_PER_TARGET_RUNTIME_DIR في الحزمة الرسميّة.
+sanitizer_runtimes = ["lib/clang/23/lib/*/clang_rt.asan_dynamic*.lib"]
 copy_from_bootstrap = [
     "bin/clang.exe",
     "bin/clang++.exe",
@@ -79,7 +88,8 @@ CMAKE_CXX_COMPILER = "{bootstrap}/bin/clang-cl.exe"
 CMAKE_LINKER = "{bootstrap}/bin/lld-link.exe"
 CMAKE_AR = "{bootstrap}/bin/llvm-lib.exe"
 CMAKE_MT = "{bootstrap}/bin/llvm-mt.exe"
-LLVM_USE_LINKER = "lld"
+# CMAKE_LINKER وحده يختار lld-link، فـCMake يستدعي الرابطَ مباشرةً مع clang-cl. ولا LLVM_USE_LINKER هنا:
+# يضيف -fuse-ld=lld إلى أوامر الربط فيتجاهله lld-link بتحذيرٍ في كلّ ربط.
 # مكتبةُ تشغيل الإصدار (/MD)، وبها يربط Rust على هدف msvc.
 CMAKE_MSVC_RUNTIME_LIBRARY = "MultiThreadedDLL"
 LLVM_HOST_TRIPLE = "x86_64-pc-windows-msvc"
@@ -88,33 +98,188 @@ LLVM_ENABLE_DIA_SDK = "OFF"
 LLVM_ENABLE_PDB = "OFF"
 LLVM_BUILD_LLVM_C_DYLIB = "ON"
 
-# ── الحزمُ الباقية: مسوّدات، لا تُبنى حتّى تكتمل ──
-# ينقصها رابطُ حزمة المترجم الرسميّة وبصمتُها، وما في «missing».
-
+# حزمتُه الرسميّة مبنيّةٌ بلا كاشفات، ولا يدعمه Rust الليليّ لهذا الهدف، فلا ASan على Windows ARM
+# (استثناءٌ في ق‑٧ §٥، يُعاد النظر فيه مع كلّ ترقية). وUBSan بوضع الحبس لا يحتاج مكتبة.
 [host.windows-arm64]
-ready = false
-missing = ["bootstrap_url", "bootstrap_sha256", "msvc_tools_version", "windows_sdk_version"]
+bootstrap_url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.3/clang+llvm-23.1.3-aarch64-pc-windows-msvc.tar.xz"
+bootstrap_sha256 = "4a42903db59f990a10c245eb32999f1e3247c37ba66de87f8f8dc2338ed9a79b"
+msvc_tools_version = "14.52"
+msvc_arch = "arm64"
+msvc_component = "Microsoft.VisualStudio.Component.VC.Tools.ARM64"
+windows_sdk_version = "10.0.26100.0"
+copy_from_bootstrap = [
+    "bin/clang.exe",
+    "bin/clang++.exe",
+    "bin/clang-cl.exe",
+    "bin/clang-format.exe",
+    "bin/clang-tidy.exe",
+    "bin/lld.exe",
+    "bin/lld-link.exe",
+    "bin/ld.lld.exe",
+    "bin/ld64.lld.exe",
+    "lib/clang",
+]
+
+[host.windows-arm64.cmake]
+CMAKE_C_COMPILER = "{bootstrap}/bin/clang-cl.exe"
+CMAKE_CXX_COMPILER = "{bootstrap}/bin/clang-cl.exe"
+CMAKE_LINKER = "{bootstrap}/bin/lld-link.exe"
+CMAKE_AR = "{bootstrap}/bin/llvm-lib.exe"
+CMAKE_MT = "{bootstrap}/bin/llvm-mt.exe"
+CMAKE_MSVC_RUNTIME_LIBRARY = "MultiThreadedDLL"
+LLVM_HOST_TRIPLE = "aarch64-pc-windows-msvc"
+LLVM_DEFAULT_TARGET_TRIPLE = "aarch64-pc-windows-msvc"
+LLVM_ENABLE_DIA_SDK = "OFF"
+LLVM_ENABLE_PDB = "OFF"
+LLVM_BUILD_LLVM_C_DYLIB = "ON"
+
+# ── لينكس ──
+# تُبنى على Ubuntu 22.04، وحدُّها الأدنى glibc 2.34 (ق‑٧): Clang وlld الرسميّان يطلبانه،
+# ويرفض السكربتُ حزمةً تطلب أحدثَ منه. وlibc++ من الحزمة الرسميّة مربوطةٌ ربطًا ساكنًا،
+# ومعها libc++abi صراحةً، فلا يُعتمد على أن تضمّها libc++.a. وClang الرسميّ نفسُه يطلب على جهاز المستخدم
+# libstdc++.so.6 وlibz.so.1 من النظام، وهما في كلّ توزيعةٍ تبلغ glibc 2.34.
 
 [host.linux-x64]
-ready = false
-missing = ["bootstrap_url", "bootstrap_sha256", "نظامُ البناء القديم وإصدارُ glibc فيه"]
+bootstrap_url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.3/LLVM-23.1.3-Linux-X64.tar.xz"
+bootstrap_sha256 = "ca9fe385a5d9e2d88132dc0e23a00e9f87f38fa75f67207b5e457d208e71d013"
+glibc_max = "2.34"
+sanitizer_runtimes = ["lib/clang/23/lib/x86_64-unknown-linux-gnu/libclang_rt.asan.a"]
+copy_from_bootstrap = [
+    "bin/clang",
+    "bin/clang++",
+    "bin/clang-23",
+    "bin/clang-format",
+    "bin/clang-tidy",
+    "bin/lld",
+    "bin/ld.lld",
+    "bin/ld64.lld",
+    "bin/lld-link",
+    "lib/clang",
+    # libc++ التي رُبط بها LLVM، بترويساتها و__config_site ومكتبتَيها الساكنتين، ليترجم بها Clang المثبَّت
+    # الحشوةَ (ق‑٥) ويربط بها sad_llvm. فلا تختلف مكتبةُ C++ بين LLVM وما يُربط معه.
+    "include/c++",
+    "include/x86_64-unknown-linux-gnu",
+    "lib/x86_64-unknown-linux-gnu/libc++.a",
+    "lib/x86_64-unknown-linux-gnu/libc++abi.a",
+]
 
 [host.linux-x64.cmake]
 CMAKE_C_COMPILER = "{bootstrap}/bin/clang"
 CMAKE_CXX_COMPILER = "{bootstrap}/bin/clang++"
 LLVM_USE_LINKER = "lld"
-# libc++ مربوطةً ربطًا ساكنًا، فتعمل الحزمةُ على التوزيعات القديمة (ق‑٧).
 LLVM_ENABLE_LIBCXX = "ON"
 LLVM_STATIC_LINK_CXX_STDLIB = "ON"
+# بعد ملفّات الكائنات في أمر الربط. ويضيف Clang بعده -lc++ ساكنةً (-static-libstdc++)، وlld يحلّ الرموزَ
+# من الأرشيفين أيًّا كان ترتيبُهما، فلا يلزم أن تأتي libc++abi بعد libc++.
+CMAKE_CXX_STANDARD_LIBRARIES = "-l:libc++abi.a"
 
 [host.linux-arm64]
-ready = false
-missing = ["bootstrap_url", "bootstrap_sha256", "نظامُ البناء القديم وإصدارُ glibc فيه"]
+bootstrap_url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.3/LLVM-23.1.3-Linux-ARM64.tar.xz"
+bootstrap_sha256 = "56d005e339c979a696ed6c244e6472e16f3b1371e48987a07e6145bda7ee0d03"
+glibc_max = "2.34"
+sanitizer_runtimes = ["lib/clang/23/lib/aarch64-unknown-linux-gnu/libclang_rt.asan.a"]
+copy_from_bootstrap = [
+    "bin/clang",
+    "bin/clang++",
+    "bin/clang-23",
+    "bin/clang-format",
+    "bin/clang-tidy",
+    "bin/lld",
+    "bin/ld.lld",
+    "bin/ld64.lld",
+    "bin/lld-link",
+    "lib/clang",
+    # libc++ التي رُبط بها LLVM، بترويساتها و__config_site ومكتبتَيها الساكنتين، ليترجم بها Clang المثبَّت
+    # الحشوةَ (ق‑٥) ويربط بها sad_llvm. فلا تختلف مكتبةُ C++ بين LLVM وما يُربط معه.
+    "include/c++",
+    "include/aarch64-unknown-linux-gnu",
+    "lib/aarch64-unknown-linux-gnu/libc++.a",
+    "lib/aarch64-unknown-linux-gnu/libc++abi.a",
+]
 
-[host.macos-x64]
-ready = false
-missing = ["bootstrap_url", "bootstrap_sha256", "CMAKE_OSX_DEPLOYMENT_TARGET", "الحدُّ الأدنى لإصدار Xcode"]
+[host.linux-arm64.cmake]
+CMAKE_C_COMPILER = "{bootstrap}/bin/clang"
+CMAKE_CXX_COMPILER = "{bootstrap}/bin/clang++"
+LLVM_USE_LINKER = "lld"
+LLVM_ENABLE_LIBCXX = "ON"
+LLVM_STATIC_LINK_CXX_STDLIB = "ON"
+# بعد ملفّات الكائنات في أمر الربط. ويضيف Clang بعده -lc++ ساكنةً (-static-libstdc++)، وlld يحلّ الرموزَ
+# من الأرشيفين أيًّا كان ترتيبُهما، فلا يلزم أن تأتي libc++abi بعد libc++.
+CMAKE_CXX_STANDARD_LIBRARIES = "-l:libc++abi.a"
+
+# ── macOS ──
+# أدنى إصدارٍ تعمل عليه الحزمة 13.0، وXcode مثبَّتٌ في البناء. وأدنى Xcode عند المتطوّع 16 (يحتاج macOS 14.5).
+# والربطُ بمكتبة C++ في النظام، فلا تُفكّ ترويساتُ libc++ من الحزمة الرسميّة ولا تُنسخ (keep_bootstrap_for في build_llvm.py).
 
 [host.macos-arm64]
-ready = false
-missing = ["bootstrap_url", "bootstrap_sha256", "CMAKE_OSX_DEPLOYMENT_TARGET", "الحدُّ الأدنى لإصدار Xcode"]
+bootstrap_url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.3/LLVM-23.1.3-macOS-ARM64.tar.xz"
+bootstrap_sha256 = "3dcfd88aec10be204a24037bcb0dc0ad777882e9dbe8ac60e2639060d8a794b1"
+xcode_version = "26.6"
+xcode_minimum = "16"
+sanitizer_runtimes = ["lib/clang/23/lib/darwin/libclang_rt.asan_osx_dynamic.dylib"]
+copy_from_bootstrap = [
+    "bin/clang",
+    "bin/clang++",
+    "bin/clang-23",
+    "bin/clang-format",
+    "bin/clang-tidy",
+    "bin/lld",
+    "bin/ld.lld",
+    "bin/ld64.lld",
+    "bin/lld-link",
+    "lib/clang",
+]
+
+[host.macos-arm64.cmake]
+CMAKE_C_COMPILER = "{bootstrap}/bin/clang"
+CMAKE_CXX_COMPILER = "{bootstrap}/bin/clang++"
+CMAKE_OSX_ARCHITECTURES = "arm64"
+CMAKE_OSX_DEPLOYMENT_TARGET = "13.0"
+LLVM_HOST_TRIPLE = "arm64-apple-darwin"
+LLVM_DEFAULT_TARGET_TRIPLE = "arm64-apple-darwin"
+
+# لا حزمةَ رسميّةَ لـLLVM على macOS بمعالج Intel، فلا bootstrap: يبني Clang الذي في Xcode المثبَّت،
+# وتُبنى Clang وأداتا الفحص والتنسيق وlld من المصدر نفسه، فيبقى الإصدارُ واحدًا.
+[host.macos-x64]
+xcode_version = "26.6"
+xcode_minimum = "16"
+# ومعها مكتبةُ builtins، فـCOMPILER_RT_BUILD_BUILTINS مفعّل.
+sanitizer_runtimes = [
+    "lib/clang/23/lib/darwin/libclang_rt.asan_osx_dynamic.dylib",
+    "lib/clang/23/lib/darwin/libclang_rt.osx.a",
+]
+
+[host.macos-x64.cmake]
+CMAKE_OSX_ARCHITECTURES = "x86_64"
+CMAKE_OSX_DEPLOYMENT_TARGET = "13.0"
+LLVM_HOST_TRIPLE = "x86_64-apple-darwin"
+LLVM_DEFAULT_TARGET_TRIPLE = "x86_64-apple-darwin"
+LLVM_ENABLE_PROJECTS = "clang;clang-tools-extra;lld"
+# clangd لا يُوزَّع على المنصّات الأخرى، وبناؤه يطيل الوقتَ على جهاز Intel.
+CLANG_ENABLE_CLANGD = "OFF"
+# compiler-rt لـASan وحده (ق‑٧ §٥)، لأنّ Clang هنا من المصدر، ومكتباتُ الكاشفات في حزمة ARM الرسميّة لـarm64 وحدها.
+# وubsan وlsan تُبنيان معه دائمًا. ولا iOS ولا Catalyst: لا يحتاجهما المضيف، وكانا يضاعفان البناء.
+LLVM_ENABLE_RUNTIMES = "compiler-rt"
+COMPILER_RT_BUILD_BUILTINS = "ON"
+COMPILER_RT_BUILD_SANITIZERS = "ON"
+COMPILER_RT_SANITIZERS_TO_BUILD = "asan"
+COMPILER_RT_BUILD_PROFILE = "ON"
+COMPILER_RT_BUILD_XRAY = "OFF"
+COMPILER_RT_BUILD_LIBFUZZER = "OFF"
+COMPILER_RT_BUILD_MEMPROF = "OFF"
+COMPILER_RT_BUILD_ORC = "OFF"
+COMPILER_RT_BUILD_CTX_PROFILE = "OFF"
+COMPILER_RT_BUILD_GWP_ASAN = "OFF"
+COMPILER_RT_INCLUDE_TESTS = "OFF"
+COMPILER_RT_ENABLE_IOS = "OFF"
+COMPILER_RT_ENABLE_WATCHOS = "OFF"
+COMPILER_RT_ENABLE_TVOS = "OFF"
+COMPILER_RT_ENABLE_XROS = "OFF"
+COMPILER_RT_ENABLE_MACCATALYST = "OFF"
+DARWIN_osx_ARCHS = "x86_64"
+SANITIZER_MIN_OSX_VERSION = "13.0"
+
+# ── الحزمُ المنشورة ──
+# بصمةُ كلّ حزمةٍ في إصدار llvm-<الإصدار> من هذا المستودع، يتحقّق منها fetch_llvm.py قبل الفكّ.
+# تُكتب بعد أوّل نشرٍ من llvm.yml، من SHA256SUMS في الإصدار. وما لم يُكتب فلم يُنشر.
+[package]
